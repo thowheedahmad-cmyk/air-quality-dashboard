@@ -246,7 +246,6 @@ let chartTemp = createChart(document.getElementById("chartTemp"),"Temperature","
 
 // ==================== AQI CALCULATION ====================
 function calculateAQI(pm25,pm10){
-    // Simplified AQI calculation (US EPA-like)
     let aqi25, aqi10;
     if(pm25<=12){aqi25=pm25*50/12;}
     else if(pm25<=35.4){aqi25=50+(pm25-12)*(50/23.4);}
@@ -269,17 +268,21 @@ function updateDashboard(){
     .then(r=>r.json())
     .then(d=>{
         let feeds=d.feeds;
+        if(feeds.length===0) return;
+
         let latest=feeds[feeds.length-1];
-        let pm25=parseFloat(latest.field1)||0;
-        let pm10=parseFloat(latest.field2)||0;
-        let temp=parseFloat(latest.field3)||0;
-        let aqi = calculateAQI(pm25,pm10);
-        
+
+        let pm25 = latest.field1 ? parseFloat(latest.field1) : 0;
+        let pm10 = latest.field2 ? parseFloat(latest.field2) : 0;
+        let temp = latest.field3 ? parseFloat(latest.field3) : 0;
+
+        let aqi = calculateAQI(pm25, pm10);
+
         // Update values
-        document.getElementById("pm25").innerText=pm25;
-        document.getElementById("pm10").innerText=pm10;
-        document.getElementById("temp").innerText=temp;
-        document.getElementById("aqiIndicator").innerText=aqi;
+        document.getElementById("pm25").innerText = pm25.toFixed(1);
+        document.getElementById("pm10").innerText = pm10.toFixed(1);
+        document.getElementById("temp").innerText = temp.toFixed(1);
+        document.getElementById("aqiIndicator").innerText = aqi;
         document.getElementById("aqiIndicator").style.backgroundColor = (aqi<=50)?"#00ff00":(aqi<=100)?"#ffff00":(aqi<=150)?"#ff9900":"#ff0000";
 
         // Update Gauges
@@ -289,15 +292,18 @@ function updateDashboard(){
         gaugeAQI.refresh(aqi);
 
         // Update charts
-        let times = feeds.map(f=>f.created_at.split("T")[1].slice(0,5));
-        let pm25Data = feeds.map(f=>f.field1);
-        let pm10Data = feeds.map(f=>f.field2);
-        let tempData = feeds.map(f=>f.field3);
-        chartPM25.data.labels=times; chartPM25.data.datasets[0].data=pm25Data; chartPM25.update();
-        chartPM10.data.labels=times; chartPM10.data.datasets[0].data=pm10Data; chartPM10.update();
-        chartTemp.data.labels=times; chartTemp.data.datasets[0].data=tempData; chartTemp.update();
-    });
+        let times = feeds.map(f => f.created_at.split("T")[1].slice(0,5));
+        let pm25Data = feeds.map(f => f.field1 ? parseFloat(f.field1) : 0);
+        let pm10Data = feeds.map(f => f.field2 ? parseFloat(f.field2) : 0);
+        let tempData = feeds.map(f => f.field3 ? parseFloat(f.field3) : 0);
+
+        chartPM25.data.labels = times; chartPM25.data.datasets[0].data = pm25Data; chartPM25.update();
+        chartPM10.data.labels = times; chartPM10.data.datasets[0].data = pm10Data; chartPM10.update();
+        chartTemp.data.labels = times; chartTemp.data.datasets[0].data = tempData; chartTemp.update();
+    })
+    .catch(e => console.error("Error fetching ThingSpeak data:", e));
 }
+
 updateDashboard();
 setInterval(updateDashboard,20000);
 
