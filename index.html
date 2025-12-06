@@ -36,7 +36,7 @@ h1 {text-align:center; margin:15px 0;}
     font-weight: bold;
 }
 
-#themeToggle {background:#00eaff; color:#0b0f1e; position:fixed; top:15px; right:15px;}
+#themeToggle {background:#00eaff; color:#0b0f1e; position:fixed; top:15px; right:15px; z-index:10;}
 #qrButton {background:#00eaff; color:#0b0f1e; margin:10px auto; display:block;}
 
 .grid {display:flex; flex-wrap:wrap; justify-content:center; gap:15px; padding:10px;}
@@ -98,15 +98,15 @@ canvas {width:100% !important; height:200px !important; margin-top:5px;}
 
 <script>
 // ================= CONFIG =================
-const channelID="3194356";
-const apiKey="4FGOQPU4R8KDKWFD";
+// Channel is public → no API key needed for reads
+const channelID = "3194356";
 
 // Theme toggle
-let dark=true;
-document.getElementById("themeToggle").onclick=()=>{
-    dark=!dark;
-    document.body.style.background=dark?"#0b0f1e":"#f4f4f4";
-    document.body.style.color=dark?"white":"#0b0f1e";
+let dark = true;
+document.getElementById("themeToggle").onclick = () => {
+    dark = !dark;
+    document.body.style.background = dark ? "#0b0f1e" : "#f4f4f4";
+    document.body.style.color = dark ? "white" : "#0b0f1e";
 };
 
 // ================= GAUGES =================
@@ -119,13 +119,31 @@ let gaugeAQI = new JustGage({id:"gaugeAQI",value:0,min:0,max:500,title:"AQI",lev
 function createChart(ctx,label,color){
     return new Chart(ctx,{
         type:"line",
-        data:{labels:[],datasets:[{label:label,data:[],borderColor:color,backgroundColor:color+"33",borderWidth:2,tension:0.3,fill:true,pointRadius:0}]},
-        options:{scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}},plugins:{legend:{labels:{color:"white"}}}}
+        data:{
+            labels:[],
+            datasets:[{
+                label:label,
+                data:[],
+                borderColor:color,
+                backgroundColor:color+"33",
+                borderWidth:2,
+                tension:0.3,
+                fill:true,
+                pointRadius:0
+            }]
+        },
+        options:{
+            scales:{
+                x:{ticks:{color:"#ccc"}},
+                y:{ticks:{color:"#ccc"}}
+            },
+            plugins:{legend:{labels:{color:"white"}}}
+        }
     });
 }
-let chartPM25=createChart(document.getElementById("chartPM25"),"PM2.5","#00eaff");
-let chartPM10=createChart(document.getElementById("chartPM10"),"PM10","#ffae00");
-let chartTemp=createChart(document.getElementById("chartTemp"),"Temp","#ff4d4d");
+let chartPM25 = createChart(document.getElementById("chartPM25"),"PM2.5","#00eaff");
+let chartPM10 = createChart(document.getElementById("chartPM10"),"PM10","#ffae00");
+let chartTemp = createChart(document.getElementById("chartTemp"),"Temp","#ff4d4d");
 
 // ================= AQI =================
 function calculateAQI(pm25,pm10){
@@ -147,24 +165,35 @@ function calculateAQI(pm25,pm10){
 
 // ================= FETCH DATA =================
 function updateDashboard(){
-    fetch(`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&results=40`)
-    .then(r=>r.json())
-    .then(d=>{
-        let feeds=d.feeds;
-        if(feeds.length===0) return;
-        let latest=feeds[feeds.length-1];
+    const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?results=40`;
 
-        let pm25=parseFloat(latest.field1||0);
-        let pm10=parseFloat(latest.field2||0);
-        let temp=parseFloat(latest.field3||0);
-        let aqi=calculateAQI(pm25,pm10);
+    fetch(url)
+    .then(r => r.json())
+    .then(d => {
+        console.log("ThingSpeak response:", d);
+
+        let feeds = d.feeds;
+        if(!feeds || feeds.length === 0){
+            console.warn("No feeds returned from ThingSpeak");
+            return;
+        }
+
+        let latest = feeds[feeds.length-1];
+
+        let pm25 = parseFloat(latest.field1 || 0);
+        let pm10 = parseFloat(latest.field2 || 0);
+        let temp = parseFloat(latest.field3 || 0);
+        let aqi  = calculateAQI(pm25,pm10);
 
         // Update live values
-        document.getElementById("pm25").innerText=pm25.toFixed(1);
-        document.getElementById("pm10").innerText=pm10.toFixed(1);
-        document.getElementById("temp").innerText=temp.toFixed(1);
-        document.getElementById("aqiIndicator").innerText=aqi;
-        document.getElementById("aqiIndicator").style.backgroundColor=(aqi<=50)?"#00ff00":(aqi<=100)?"#ffff00":(aqi<=150)?"#ff9900":"#ff0000";
+        document.getElementById("pm25").innerText = pm25.toFixed(1);
+        document.getElementById("pm10").innerText = pm10.toFixed(1);
+        document.getElementById("temp").innerText = temp.toFixed(1);
+        document.getElementById("aqiIndicator").innerText = aqi;
+        document.getElementById("aqiIndicator").style.backgroundColor =
+            (aqi<=50) ? "#00ff00" :
+            (aqi<=100)? "#ffff00" :
+            (aqi<=150)? "#ff9900" : "#ff0000";
 
         // Update gauges
         gaugePM25.refresh(pm25);
@@ -173,12 +202,20 @@ function updateDashboard(){
         gaugeAQI.refresh(aqi);
 
         // Update charts
-        let times=feeds.map(f=>f.created_at.split("T")[1].slice(0,5));
-        chartPM25.data.labels=times; chartPM25.data.datasets[0].data=feeds.map(f=>parseFloat(f.field1||0)); chartPM25.update();
-        chartPM10.data.labels=times; chartPM10.data.datasets[0].data=feeds.map(f=>parseFloat(f.field2||0)); chartPM10.update();
-        chartTemp.data.labels=times; chartTemp.data.datasets[0].data=feeds.map(f=>parseFloat(f.field3||0)); chartTemp.update();
+        let times = feeds.map(f => f.created_at.split("T")[1].slice(0,5));
+        chartPM25.data.labels = times;
+        chartPM25.data.datasets[0].data = feeds.map(f => parseFloat(f.field1 || 0));
+        chartPM25.update();
+
+        chartPM10.data.labels = times;
+        chartPM10.data.datasets[0].data = feeds.map(f => parseFloat(f.field2 || 0));
+        chartPM10.update();
+
+        chartTemp.data.labels = times;
+        chartTemp.data.datasets[0].data = feeds.map(f => parseFloat(f.field3 || 0));
+        chartTemp.update();
     })
-    .catch(e=>console.error("Error fetching ThingSpeak data:",e));
+    .catch(e => console.error("Error fetching ThingSpeak data:", e));
 }
 
 // Initial update + refresh every 20 seconds
@@ -186,8 +223,8 @@ updateDashboard();
 setInterval(updateDashboard,20000);
 
 // ================= QR CODE =================
-document.getElementById("qrButton").onclick=()=>{
-    QRCode.toCanvas(document.getElementById("qrcode"),window.location.href,{width:150});
+document.getElementById("qrButton").onclick = () => {
+    QRCode.toCanvas(document.getElementById("qrcode"), window.location.href, {width:150});
 };
 </script>
 
