@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ultimate Air Quality Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- JustGage for gauges -->
+<script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
+
+<!-- QR Code Generator -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Poppins", sans-serif;
+    background: #0b0f1e;
+    color: white;
+    overflow-x: hidden;
+}
+
+h1 {
+    text-align: center;
+    font-size: 34px;
+    margin: 20px 0;
+}
+
+/* Theme switch button */
+#themeToggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    background: #00eaff;
+    color: #0b0f1e;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Grid layout */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    padding: 20px;
+}
+
+/* Glass card */
+.card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(14px);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    background: rgba(255,255,255,0.12);
+}
+
+/* Big neon value */
+.value {
+    font-size: 45px;
+    font-weight: 600;
+    color: #00eaff;
+    text-shadow: 0px 0px 12px #00eaffaa;
+}
+
+/* Charts */
+canvas {
+    width: 100% !important;
+    height: 280px !important;
+    margin-top: 10px;
+}
+
+/* AQI indicator */
+#aqiIndicator {
+    font-size: 36px;
+    font-weight: 700;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 12px;
+}
+
+/* QR code button */
+#qrButton {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: #00eaff;
+    color: #0b0f1e;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Particle background canvas */
+#particles {
+    position: fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    z-index:-1;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- Particle background -->
+<canvas id="particles"></canvas>
+
+<!-- Theme toggle -->
+<button id="themeToggle">Toggle Theme</button>
+
+<h1>🌍 Ultimate Air Quality Dashboard</h1>
+
+<!-- Live Values -->
+<div class="grid">
+    <div class="card">
+        <h2>PM 2.5</h2>
+        <div id="pm25" class="value">--</div>
+    </div>
+    <div class="card">
+        <h2>PM 10</h2>
+        <div id="pm10" class="value">--</div>
+    </div>
+    <div class="card">
+        <h2>Temperature (°C)</h2>
+        <div id="temp" class="value">--</div>
+    </div>
+    <div class="card">
+        <h2>AQI</h2>
+        <div id="aqiIndicator">--</div>
+    </div>
+</div>
+
+<!-- Gauges -->
+<div class="grid">
+    <div class="card">
+        <h2>PM 2.5 Gauge</h2>
+        <div id="gaugePM25" style="width:100%;height:200px;"></div>
+    </div>
+    <div class="card">
+        <h2>PM 10 Gauge</h2>
+        <div id="gaugePM10" style="width:100%;height:200px;"></div>
+    </div>
+    <div class="card">
+        <h2>Temperature Gauge</h2>
+        <div id="gaugeTemp" style="width:100%;height:200px;"></div>
+    </div>
+    <div class="card">
+        <h2>AQI Gauge</h2>
+        <div id="gaugeAQI" style="width:100%;height:200px;"></div>
+    </div>
+</div>
+
+<!-- Charts -->
+<h1>📊 Real-Time Charts</h1>
+<div class="grid">
+    <div class="card"><h2>PM 2.5</h2><canvas id="chartPM25"></canvas></div>
+    <div class="card"><h2>PM 10</h2><canvas id="chartPM10"></canvas></div>
+    <div class="card"><h2>Temperature</h2><canvas id="chartTemp"></canvas></div>
+</div>
+
+<!-- QR / Share Button -->
+<div class="grid">
+    <div class="card">
+        <button id="qrButton">Show QR Code</button>
+        <div id="qrcode"></div>
+    </div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+const channelID = "3194356";
+const apiKey = "BCWTN6R857L2QAIZ";
+
+// ==================== PARTICLE BACKGROUND ====================
+const canvas = document.getElementById("particles");
+const ctx = canvas.getContext("2d");
+let particles = [];
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+for (let i=0;i<100;i++){
+    particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*2+1,speed:Math.random()*0.5+0.2});
+}
+function animateParticles(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+        p.x += p.speed;
+        if(p.x>canvas.width)p.x=0;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle="rgba(0, 255, 255,0.3)";
+        ctx.fill();
+    });
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+window.addEventListener("resize",()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight});
+
+// ==================== THEME SWITCHER ====================
+let darkTheme=true;
+document.getElementById("themeToggle").addEventListener("click",()=>{
+    darkTheme=!darkTheme;
+    if(darkTheme){
+        document.body.style.background="#0b0f1e";
+        document.body.style.color="white";
+    }else{
+        document.body.style.background="#f4f4f4";
+        document.body.style.color="#0b0f1e";
+    }
+});
+
+// ==================== GAUGES ====================
+let gaugePM25 = new JustGage({id:"gaugePM25",value:0,min:0,max:500,title:"PM2.5",levelColors:["#00eaff","#ffae00","#ff4d4d"]});
+let gaugePM10 = new JustGage({id:"gaugePM10",value:0,min:0,max:500,title:"PM10",levelColors:["#00eaff","#ffae00","#ff4d4d"]});
+let gaugeTemp = new JustGage({id:"gaugeTemp",value:0,min:-10,max:50,title:"Temp",levelColors:["#00eaff","#ffae00","#ff4d4d"]});
+let gaugeAQI = new JustGage({id:"gaugeAQI",value:0,min:0,max:500,title:"AQI",levelColors:["#00ff00","#ffff00","#ff9900","#ff0000"]});
+
+// ==================== CHARTS ====================
+function createChart(ctx,label,color){
+    return new Chart(ctx,{type:"line",data:{labels:[],datasets:[{label:label,data:[],borderColor:color,backgroundColor:color+"33",borderWidth:3,tension:0.35,fill:true,pointRadius:0}]},options:{scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}},plugins:{legend:{labels:{color:"white"}}}}});
+}
+let chartPM25 = createChart(document.getElementById("chartPM25"),"PM2.5","#00eaff");
+let chartPM10 = createChart(document.getElementById("chartPM10"),"PM10","#ffae00");
+let chartTemp = createChart(document.getElementById("chartTemp"),"Temperature","#ff4d4d");
+
+// ==================== AQI CALCULATION ====================
+function calculateAQI(pm25,pm10){
+    // Simplified AQI calculation (US EPA-like)
+    let aqi25, aqi10;
+    if(pm25<=12){aqi25=pm25*50/12;}
+    else if(pm25<=35.4){aqi25=50+(pm25-12)*(50/23.4);}
+    else if(pm25<=55.4){aqi25=100+(pm25-35.4)*(50/19.9);}
+    else if(pm25<=150.4){aqi25=150+(pm25-55.4)*(100/95);}
+    else{aqi25=300;}
+    
+    if(pm10<=54){aqi10=pm10*50/54;}
+    else if(pm10<=154){aqi10=50+(pm10-54)*(50/100);}
+    else if(pm10<=254){aqi10=100+(pm10-154)*(50/100);}
+    else if(pm10<=354){aqi10=150+(pm10-254)*(100/100);}
+    else{aqi10=300;}
+    
+    return Math.round(Math.max(aqi25,aqi10));
+}
+
+// ==================== FETCH DATA ====================
+function updateDashboard(){
+    fetch(`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&results=40`)
+    .then(r=>r.json())
+    .then(d=>{
+        let feeds=d.feeds;
+        let latest=feeds[feeds.length-1];
+        let pm25=parseFloat(latest.field1)||0;
+        let pm10=parseFloat(latest.field2)||0;
+        let temp=parseFloat(latest.field3)||0;
+        let aqi = calculateAQI(pm25,pm10);
+        
+        // Update values
+        document.getElementById("pm25").innerText=pm25;
+        document.getElementById("pm10").innerText=pm10;
+        document.getElementById("temp").innerText=temp;
+        document.getElementById("aqiIndicator").innerText=aqi;
+        document.getElementById("aqiIndicator").style.backgroundColor = (aqi<=50)?"#00ff00":(aqi<=100)?"#ffff00":(aqi<=150)?"#ff9900":"#ff0000";
+
+        // Update Gauges
+        gaugePM25.refresh(pm25);
+        gaugePM10.refresh(pm10);
+        gaugeTemp.refresh(temp);
+        gaugeAQI.refresh(aqi);
+
+        // Update charts
+        let times = feeds.map(f=>f.created_at.split("T")[1].slice(0,5));
+        let pm25Data = feeds.map(f=>f.field1);
+        let pm10Data = feeds.map(f=>f.field2);
+        let tempData = feeds.map(f=>f.field3);
+        chartPM25.data.labels=times; chartPM25.data.datasets[0].data=pm25Data; chartPM25.update();
+        chartPM10.data.labels=times; chartPM10.data.datasets[0].data=pm10Data; chartPM10.update();
+        chartTemp.data.labels=times; chartTemp.data.datasets[0].data=tempData; chartTemp.update();
+    });
+}
+updateDashboard();
+setInterval(updateDashboard,20000);
+
+// ==================== QR CODE ====================
+document.getElementById("qrButton").addEventListener("click",()=>{
+    let url=window.location.href;
+    QRCode.toCanvas(document.getElementById("qrcode"),url,{width:150});
+});
+</script>
+
+</body>
+</html>
