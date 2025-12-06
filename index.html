@@ -58,7 +58,7 @@ canvas {
     </div>
     <div class="card">
         <h2>Temperature (°C)</h2>
-        <div id="temp" class="value">Loading...</div>
+        <div id="btemperature" class="value">Loading...</div>
     </div>
 </div>
 
@@ -83,66 +83,49 @@ const channelID = "3194356";
 const apiKey = "4FGOQPU4R8KDKWFD";
 const resultsCount = 40; // number of points to fetch
 
-// Charts initialization
+// Create Chart.js charts
 function createChart(ctx, label, color) {
     return new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: color,
-                backgroundColor: color + "33",
-                borderWidth: 2,
-                tension: 0.3,
-                fill: true,
-                pointRadius: 0
-            }]
-        },
+        data: { labels: [], datasets: [{ label: label, data: [], borderColor: color, backgroundColor: color + "33", borderWidth: 2, tension:0.3, fill:true, pointRadius:0 }] },
         options: {
             responsive:true,
-            scales: {
-                x: { ticks:{color:'#333'} },
-                y: { ticks:{color:'#333'} }
-            },
-            plugins: {
-                legend:{ labels:{color:'#333'} }
-            }
+            scales: { x:{ ticks:{color:'#333'} }, y:{ ticks:{color:'#333'} } },
+            plugins:{ legend:{ labels:{color:'#333'} } }
         }
     });
 }
 
-let chartPM25 = createChart(document.getElementById("chartPM25"), "PM2.5", "#2d4b8e");
-let chartPM10 = createChart(document.getElementById("chartPM10"), "PM10", "#ff9900");
+let chartPM25 = createChart(document.getElementById("chartPM25"), "PM 2.5", "#2d4b8e");
+let chartPM10 = createChart(document.getElementById("chartPM10"), "PM 10", "#ff9900");
 let chartTemp = createChart(document.getElementById("chartTemp"), "Temperature", "#ff4d4d");
 
-// Fetch data and update dashboard
+// Fetch ThingSpeak data and update dashboard
 async function updateDashboard() {
     try {
         const response = await fetch(`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&results=${resultsCount}`);
         const data = await response.json();
         const feeds = data.feeds;
-
-        if (feeds.length === 0) return;
+        if (!feeds || feeds.length === 0) return;
 
         const latest = feeds[feeds.length - 1];
 
-        // Update live values
-        const pm25 = parseFloat(latest.field1 || 0);
-        const pm10 = parseFloat(latest.field2 || 0);
-        const temp = parseFloat(latest.field3 || 0);
+        // Use null if field is empty
+        const pm25 = latest.field1 ? parseFloat(latest.field1) : null;
+        const pm10 = latest.field2 ? parseFloat(latest.field2) : null;
+        const btemperature = latest.field3 ? parseFloat(latest.field3) : null;
 
-        document.getElementById("pm25").innerText = pm25.toFixed(1);
-        document.getElementById("pm10").innerText = pm10.toFixed(1);
-        document.getElementById("temp").innerText = temp.toFixed(1);
+        document.getElementById("pm25").innerText = pm25 !== null ? pm25.toFixed(1) : "No data";
+        document.getElementById("pm10").innerText = pm10 !== null ? pm10.toFixed(1) : "No data";
+        document.getElementById("btemperature").innerText = btemperature !== null ? btemperature.toFixed(1) : "No data";
+
+        // Prepare chart data
+        const labels = feeds.map(f => new Date(f.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+        const pm25Data = feeds.map(f => f.field1 ? parseFloat(f.field1) : null);
+        const pm10Data = feeds.map(f => f.field2 ? parseFloat(f.field2) : null);
+        const tempData = feeds.map(f => f.field3 ? parseFloat(f.field3) : null);
 
         // Update charts
-        const labels = feeds.map(f => new Date(f.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
-        const pm25Data = feeds.map(f => parseFloat(f.field1 || 0));
-        const pm10Data = feeds.map(f => parseFloat(f.field2 || 0));
-        const tempData = feeds.map(f => parseFloat(f.field3 || 0));
-
         chartPM25.data.labels = labels;
         chartPM25.data.datasets[0].data = pm25Data;
         chartPM25.update();
@@ -155,16 +138,15 @@ async function updateDashboard() {
         chartTemp.data.datasets[0].data = tempData;
         chartTemp.update();
 
-    } catch (err) {
+    } catch(err) {
         console.error("Error fetching ThingSpeak data:", err);
     }
 }
 
-// Initial update and repeat every 20 seconds
+// Initial fetch and auto-refresh every 20 seconds
 updateDashboard();
 setInterval(updateDashboard, 20000);
 </script>
 
 </body>
 </html>
-
