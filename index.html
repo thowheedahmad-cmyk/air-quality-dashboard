@@ -1,110 +1,168 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Air Quality Live Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f8fb;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 {
-            text-align: center;
-            color: #2d4b8e;
-        }
-        .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-            text-align: center;
-        }
-        .value {
-            font-size: 40px;
-            font-weight: bold;
-            color: #333;
-        }
-        iframe {
-            width: 100%;
-            height: 260px;
-            border: none;
-            border-radius: 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Air Quality Live Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: 'Poppins', sans-serif;
+    margin:0; padding:20px;
+    background:#f4f8fb;
+    color:#333;
+}
+h1 {text-align:center; margin-bottom:20px;}
+.container {
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap:20px;
+    margin-bottom:40px;
+}
+.card {
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+    text-align:center;
+}
+.value {
+    font-size:40px;
+    font-weight:bold;
+    color:#2d4b8e;
+}
+canvas {
+    width:100% !important;
+    height:250px !important;
+}
+</style>
 </head>
 <body>
 
 <h1>Live Air Quality Dashboard</h1>
 
 <div class="container">
-    <!-- PM 2.5 Live Value -->
     <div class="card">
         <h2>PM 2.5</h2>
         <div id="pm25" class="value">Loading...</div>
     </div>
-
-    <!-- PM 10 Live Value -->
     <div class="card">
         <h2>PM 10</h2>
         <div id="pm10" class="value">Loading...</div>
     </div>
-
-    <!-- Temperature Live Value -->
     <div class="card">
         <h2>Temperature (°C)</h2>
         <div id="temp" class="value">Loading...</div>
     </div>
 </div>
 
-<br><br>
-
 <h1>Live Charts</h1>
-
 <div class="container">
-    <!-- PM2.5 Chart -->
     <div class="card">
         <h2>PM 2.5 Trend</h2>
-        <iframe src="https://thingspeak.com/channels/3154613/charts/1?apikey=K2KIR919YCLGJPT0&dynamic=true&results=40&update=20"></iframe>
+        <canvas id="chartPM25"></canvas>
     </div>
-
-    <!-- PM10 Chart -->
     <div class="card">
         <h2>PM 10 Trend</h2>
-        <iframe src="https://thingspeak.com/channels/3154613/charts/2?apikey=K2KIR919YCLGJPT0&dynamic=true&results=40&update=20"></iframe>
+        <canvas id="chartPM10"></canvas>
     </div>
-
-    <!-- Temperature Chart -->
     <div class="card">
         <h2>Temperature Trend</h2>
-        <iframe src="https://thingspeak.com/channels/3154613/charts/3?apikey=K2KIR919YCLGJPT0&dynamic=true&results=40&update=20"></iframe>
+        <canvas id="chartTemp"></canvas>
     </div>
 </div>
 
 <script>
-    const channelID = "3194356";
-    const apiKey = "4FGOQPU4R8KDKWFD";
+const channelID = "3194356";
+const apiKey = "4FGOQPU4R8KDKWFD";
+const resultsCount = 40; // number of points to fetch
 
-    function updateValues() {
-        fetch(`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&results=1`)
-        .then(response => response.json())
-        .then(data => {
-            let feed = data.feeds[0];
+// Charts initialization
+function createChart(ctx, label, color) {
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                backgroundColor: color + "33",
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive:true,
+            scales: {
+                x: { ticks:{color:'#333'} },
+                y: { ticks:{color:'#333'} }
+            },
+            plugins: {
+                legend:{ labels:{color:'#333'} }
+            }
+        }
+    });
+}
 
-            document.getElementById("pm25").innerText = feed.field1 || "N/A";
-            document.getElementById("pm10").innerText = feed.field2 || "N/A";
-            document.getElementById("temp").innerText = feed.field3 || "N/A";
-        });
+let chartPM25 = createChart(document.getElementById("chartPM25"), "PM2.5", "#2d4b8e");
+let chartPM10 = createChart(document.getElementById("chartPM10"), "PM10", "#ff9900");
+let chartTemp = createChart(document.getElementById("chartTemp"), "Temperature", "#ff4d4d");
+
+// Fetch data and update dashboard
+async function updateDashboard() {
+    try {
+        const response = await fetch(`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&results=${resultsCount}`);
+        const data = await response.json();
+        const feeds = data.feeds;
+
+        if (feeds.length === 0) return;
+
+        const latest = feeds[feeds.length - 1];
+
+        // Update live values
+        const pm25 = parseFloat(latest.field1 || 0);
+        const pm10 = parseFloat(latest.field2 || 0);
+        const temp = parseFloat(latest.field3 || 0);
+
+        document.getElementById("pm25").innerText = pm25.toFixed(1);
+        document.getElementById("pm10").innerText = pm10.toFixed(1);
+        document.getElementById("temp").innerText = temp.toFixed(1);
+
+        // Update charts
+        const labels = feeds.map(f => new Date(f.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+        const pm25Data = feeds.map(f => parseFloat(f.field1 || 0));
+        const pm10Data = feeds.map(f => parseFloat(f.field2 || 0));
+        const tempData = feeds.map(f => parseFloat(f.field3 || 0));
+
+        chartPM25.data.labels = labels;
+        chartPM25.data.datasets[0].data = pm25Data;
+        chartPM25.update();
+
+        chartPM10.data.labels = labels;
+        chartPM10.data.datasets[0].data = pm10Data;
+        chartPM10.update();
+
+        chartTemp.data.labels = labels;
+        chartTemp.data.datasets[0].data = tempData;
+        chartTemp.update();
+
+    } catch (err) {
+        console.error("Error fetching ThingSpeak data:", err);
     }
+}
 
-    updateValues();
-    setInterval(updateValues, 20000); // refresh every 20 seconds
+// Initial update and repeat every 20 seconds
+updateDashboard();
+setInterval(updateDashboard, 20000);
 </script>
 
 </body>
