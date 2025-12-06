@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ultimate Air Quality Dashboard</title>
+<title>Mobile Air Quality Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Google Font -->
@@ -11,410 +11,184 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- JustGage for gauges -->
+<!-- JustGage -->
 <script src="https://cdn.jsdelivr.net/npm/justgage@1.3.5/justgage.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/raphael@2.3.0/raphael.min.js"></script>
 
-<!-- QR Code Generator -->
+<!-- QR Code -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
 body {
     margin: 0;
-    padding: 0;
     font-family: "Poppins", sans-serif;
     background: #0b0f1e;
     color: white;
-    overflow-x: hidden;
 }
 
-h1 {
-    text-align: center;
-    font-size: 34px;
-    margin: 20px 0;
-}
+h1 {text-align:center; margin:15px 0;}
 
-/* Theme switch button */
-#themeToggle {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 10px 16px;
-    background: #00eaff;
-    color: #0b0f1e;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    z-index: 10;
-}
-
-/* Grid layout */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 25px;
-    padding: 20px;
-}
-
-/* Glass card */
-.card {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(14px);
-    border-radius: 15px;
-    padding: 20px;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 0 20px rgba(0,0,0,0.4);
-    transition: 0.3s;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    background: rgba(255,255,255,0.12);
-}
-
-/* Big neon value */
-.value {
-    font-size: 45px;
-    font-weight: 600;
-    color: #00eaff;
-    text-shadow: 0px 0px 12px #00eaffaa;
-}
-
-/* Charts */
-canvas {
-    width: 100% !important;
-    height: 280px !important;
-    margin-top: 10px;
-}
-
-/* AQI indicator */
-#aqiIndicator {
-    font-size: 36px;
-    font-weight: 700;
-    margin-top: 10px;
-    padding: 10px;
-    border-radius: 12px;
-}
-
-/* QR code button */
-#qrButton {
-    margin-top: 10px;
+#themeToggle, #qrButton {
     padding: 8px 12px;
-    background: #00eaff;
-    color: #0b0f1e;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
 }
 
-/* Particle background canvas */
-#particles {
-    position: fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    z-index:-1;
+#themeToggle {background:#00eaff; color:#0b0f1e; position:fixed; top:15px; right:15px;}
+#qrButton {background:#00eaff; color:#0b0f1e; margin:10px auto; display:block;}
+
+.grid {display:flex; flex-wrap:wrap; justify-content:center; gap:15px; padding:10px;}
+.card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    border-radius:12px;
+    padding:15px;
+    flex:1 1 140px;
+    min-width:140px;
+    text-align:center;
+}
+
+.value {font-size:32px; font-weight:600; color:#00eaff; text-shadow:0 0 10px #00eaffaa;}
+
+canvas {width:100% !important; height:200px !important; margin-top:5px;}
+
+#aqiIndicator {
+    font-size:28px;
+    font-weight:700;
+    margin-top:5px;
+    padding:8px;
+    border-radius:10px;
+    display:inline-block;
 }
 </style>
 </head>
 
 <body>
 
-<!-- Particle background -->
-<canvas id="particles"></canvas>
-
-<!-- Theme toggle -->
 <button id="themeToggle">Toggle Theme</button>
 
-<h1>🌍 Ultimate Air Quality Dashboard</h1>
+<h1>🌍 Air Quality Dashboard</h1>
 
-<!-- Live Values -->
 <div class="grid">
-    <div class="card">
-        <h2>PM 2.5</h2>
-        <div id="pm25" class="value">--</div>
-    </div>
-    <div class="card">
-        <h2>PM 10</h2>
-        <div id="pm10" class="value">--</div>
-    </div>
-    <div class="card">
-        <h2>Temperature (°C)</h2>
-        <div id="temp" class="value">--</div>
-    </div>
-    <div class="card">
-        <h2>AQI</h2>
-        <div id="aqiIndicator">--</div>
-    </div>
+    <div class="card"><h3>PM2.5</h3><div id="pm25" class="value">--</div></div>
+    <div class="card"><h3>PM10</h3><div id="pm10" class="value">--</div></div>
+    <div class="card"><h3>Temp (°C)</h3><div id="temp" class="value">--</div></div>
+    <div class="card"><h3>AQI</h3><div id="aqiIndicator">--</div></div>
 </div>
 
-<!-- Gauges -->
 <div class="grid">
-    <div class="card">
-        <h2>PM 2.5 Gauge</h2>
-        <div id="gaugePM25" style="width:100%;height:200px;"></div>
-    </div>
-    <div class="card">
-        <h2>PM 10 Gauge</h2>
-        <div id="gaugePM10" style="width:100%;height:200px;"></div>
-    </div>
-    <div class="card">
-        <h2>Temperature Gauge</h2>
-        <div id="gaugeTemp" style="width:100%;height:200px;"></div>
-    </div>
-    <div class="card">
-        <h2>AQI Gauge</h2>
-        <div id="gaugeAQI" style="width:100%;height:200px;"></div>
-    </div>
+    <div class="card"><h3>PM2.5 Gauge</h3><div id="gaugePM25" style="height:150px;"></div></div>
+    <div class="card"><h3>PM10 Gauge</h3><div id="gaugePM10" style="height:150px;"></div></div>
+    <div class="card"><h3>Temp Gauge</h3><div id="gaugeTemp" style="height:150px;"></div></div>
+    <div class="card"><h3>AQI Gauge</h3><div id="gaugeAQI" style="height:150px;"></div></div>
 </div>
 
-<!-- Charts -->
-<h1>📊 Real-Time Charts</h1>
 <div class="grid">
-    <div class="card"><h2>PM 2.5</h2><canvas id="chartPM25"></canvas></div>
-    <div class="card"><h2>PM 10</h2><canvas id="chartPM10"></canvas></div>
-    <div class="card"><h2>Temperature</h2><canvas id="chartTemp"></canvas></div>
+    <div class="card"><h3>PM2.5 Chart</h3><canvas id="chartPM25"></canvas></div>
+    <div class="card"><h3>PM10 Chart</h3><canvas id="chartPM10"></canvas></div>
+    <div class="card"><h3>Temp Chart</h3><canvas id="chartTemp"></canvas></div>
 </div>
 
-<!-- QR / Share Button -->
-<div class="grid">
-    <div class="card">
-        <button id="qrButton">Show QR Code</button>
-        <div id="qrcode"></div>
-    </div>
+<div class="card">
+    <button id="qrButton">Show QR Code</button>
+    <div id="qrcode"></div>
 </div>
 
 <script>
-// ==================== CONFIG ====================
-// Make sure this channel ID is the same one that your ESP32 (write key) is sending to
-const channelID  = "3194356";
-const readAPIKey = "4FGOQPU4R8KDKWFD";  // READ API KEY (safe for browser)
+// ================= CONFIG =================
+const channelID="3194356";
+const apiKey="4FGOQPU4R8KDKWFD";
 
-// ==================== PARTICLE BACKGROUND ====================
-const canvas = document.getElementById("particles");
-const ctx = canvas.getContext("2d");
-let particles = [];
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+// Theme toggle
+let dark=true;
+document.getElementById("themeToggle").onclick=()=>{
+    dark=!dark;
+    document.body.style.background=dark?"#0b0f1e":"#f4f4f4";
+    document.body.style.color=dark?"white":"#0b0f1e";
+};
 
-for (let i = 0; i < 100; i++) {
-    particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 2 + 1,
-        speed: Math.random() * 0.5 + 0.2
+// ================= GAUGES =================
+let gaugePM25 = new JustGage({id:"gaugePM25",value:0,min:0,max:500,title:"PM2.5",levelColors:["#00eaff","#ffae00","#ff4d4d"]});
+let gaugePM10 = new JustGage({id:"gaugePM10",value:0,min:0,max:500,title:"PM10",levelColors:["#00eaff","#ffae00","#ff4d4d"]});
+let gaugeTemp = new JustGage({id:"gaugeTemp",value:0,min:-10,max:50,title:"Temp",levelColors:["#00eaff","#ffae00","#ff4d4d"]});
+let gaugeAQI = new JustGage({id:"gaugeAQI",value:0,min:0,max:500,title:"AQI",levelColors:["#00ff00","#ffff00","#ff9900","#ff0000"]});
+
+// ================= CHARTS =================
+function createChart(ctx,label,color){
+    return new Chart(ctx,{
+        type:"line",
+        data:{labels:[],datasets:[{label:label,data:[],borderColor:color,backgroundColor:color+"33",borderWidth:2,tension:0.3,fill:true,pointRadius:0}]},
+        options:{scales:{x:{ticks:{color:"#ccc"}},y:{ticks:{color:"#ccc"}}},plugins:{legend:{labels:{color:"white"}}}}
     });
 }
+let chartPM25=createChart(document.getElementById("chartPM25"),"PM2.5","#00eaff");
+let chartPM10=createChart(document.getElementById("chartPM10"),"PM10","#ffae00");
+let chartTemp=createChart(document.getElementById("chartTemp"),"Temp","#ff4d4d");
 
-function animateParticles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-        p.x += p.speed;
-        if (p.x > canvas.width) p.x = 0;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0, 255, 255,0.3)";
-        ctx.fill();
-    });
-    requestAnimationFrame(animateParticles);
-}
-animateParticles();
+// ================= AQI =================
+function calculateAQI(pm25,pm10){
+    let aqi25,aqi10;
+    if(pm25<=12) aqi25=pm25*50/12;
+    else if(pm25<=35.4) aqi25=50+(pm25-12)*(50/23.4);
+    else if(pm25<=55.4) aqi25=100+(pm25-35.4)*(50/19.9);
+    else if(pm25<=150.4) aqi25=150+(pm25-55.4)*(100/95);
+    else aqi25=300;
 
-window.addEventListener("resize", () => {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
+    if(pm10<=54) aqi10=pm10*50/54;
+    else if(pm10<=154) aqi10=50+(pm10-54)*(50/100);
+    else if(pm10<=254) aqi10=100+(pm10-154)*(50/100);
+    else if(pm10<=354) aqi10=150+(pm10-254)*(100/100);
+    else aqi10=300;
 
-// ==================== THEME SWITCHER ====================
-let darkTheme = true;
-document.getElementById("themeToggle").addEventListener("click", () => {
-    darkTheme = !darkTheme;
-    if (darkTheme) {
-        document.body.style.background = "#0b0f1e";
-        document.body.style.color = "white";
-    } else {
-        document.body.style.background = "#f4f4f4";
-        document.body.style.color = "#0b0f1e";
-    }
-});
-
-// ==================== GAUGES ====================
-let gaugePM25 = new JustGage({
-    id: "gaugePM25",
-    value: 0,
-    min: 0,
-    max: 500,
-    title: "PM2.5",
-    levelColors: ["#00eaff", "#ffae00", "#ff4d4d"]
-});
-
-let gaugePM10 = new JustGage({
-    id: "gaugePM10",
-    value: 0,
-    min: 0,
-    max: 500,
-    title: "PM10",
-    levelColors: ["#00eaff", "#ffae00", "#ff4d4d"]
-});
-
-let gaugeTemp = new JustGage({
-    id: "gaugeTemp",
-    value: 0,
-    min: -10,
-    max: 50,
-    title: "Temp",
-    levelColors: ["#00eaff", "#ffae00", "#ff4d4d"]
-});
-
-let gaugeAQI = new JustGage({
-    id: "gaugeAQI",
-    value: 0,
-    min: 0,
-    max: 500,
-    title: "AQI",
-    levelColors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"]
-});
-
-// ==================== CHARTS ====================
-function createChart(ctx, label, color) {
-    return new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: color,
-                backgroundColor: color + "33",
-                borderWidth: 3,
-                tension: 0.35,
-                fill: true,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            scales: {
-                x: { ticks: { color: "#ccc" } },
-                y: { ticks: { color: "#ccc" } }
-            },
-            plugins: {
-                legend: {
-                    labels: { color: "white" }
-                }
-            }
-        }
-    });
+    return Math.round(Math.max(aqi25,aqi10));
 }
 
-let chartPM25 = createChart(document.getElementById("chartPM25"), "PM2.5", "#00eaff");
-let chartPM10 = createChart(document.getElementById("chartPM10"), "PM10", "#ffae00");
-let chartTemp = createChart(document.getElementById("chartTemp"), "Temperature", "#ff4d4d");
+// ================= FETCH DATA =================
+function updateDashboard(){
+    fetch(`https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&results=40`)
+    .then(r=>r.json())
+    .then(d=>{
+        let feeds=d.feeds;
+        if(feeds.length===0) return;
+        let latest=feeds[feeds.length-1];
 
-// ==================== AQI CALCULATION ====================
-function calculateAQI(pm25, pm10) {
-    let aqi25, aqi10;
+        let pm25=parseFloat(latest.field1||0);
+        let pm10=parseFloat(latest.field2||0);
+        let temp=parseFloat(latest.field3||0);
+        let aqi=calculateAQI(pm25,pm10);
 
-    if (pm25 <= 12) {
-        aqi25 = pm25 * 50 / 12;
-    } else if (pm25 <= 35.4) {
-        aqi25 = 50 + (pm25 - 12) * (50 / 23.4);
-    } else if (pm25 <= 55.4) {
-        aqi25 = 100 + (pm25 - 35.4) * (50 / 19.9);
-    } else if (pm25 <= 150.4) {
-        aqi25 = 150 + (pm25 - 55.4) * (100 / 95);
-    } else {
-        aqi25 = 300;
-    }
-    
-    if (pm10 <= 54) {
-        aqi10 = pm10 * 50 / 54;
-    } else if (pm10 <= 154) {
-        aqi10 = 50 + (pm10 - 54) * (50 / 100);
-    } else if (pm10 <= 254) {
-        aqi10 = 100 + (pm10 - 154) * (50 / 100);
-    } else if (pm10 <= 354) {
-        aqi10 = 150 + (pm10 - 254) * (100 / 100);
-    } else {
-        aqi10 = 300;
-    }
+        // Update live values
+        document.getElementById("pm25").innerText=pm25.toFixed(1);
+        document.getElementById("pm10").innerText=pm10.toFixed(1);
+        document.getElementById("temp").innerText=temp.toFixed(1);
+        document.getElementById("aqiIndicator").innerText=aqi;
+        document.getElementById("aqiIndicator").style.backgroundColor=(aqi<=50)?"#00ff00":(aqi<=100)?"#ffff00":(aqi<=150)?"#ff9900":"#ff0000";
 
-    return Math.round(Math.max(aqi25, aqi10));
+        // Update gauges
+        gaugePM25.refresh(pm25);
+        gaugePM10.refresh(pm10);
+        gaugeTemp.refresh(temp);
+        gaugeAQI.refresh(aqi);
+
+        // Update charts
+        let times=feeds.map(f=>f.created_at.split("T")[1].slice(0,5));
+        chartPM25.data.labels=times; chartPM25.data.datasets[0].data=feeds.map(f=>parseFloat(f.field1||0)); chartPM25.update();
+        chartPM10.data.labels=times; chartPM10.data.datasets[0].data=feeds.map(f=>parseFloat(f.field2||0)); chartPM10.update();
+        chartTemp.data.labels=times; chartTemp.data.datasets[0].data=feeds.map(f=>parseFloat(f.field3||0)); chartTemp.update();
+    })
+    .catch(e=>console.error("Error fetching ThingSpeak data:",e));
 }
 
-// ==================== FETCH DATA FROM THINGSPEAK ====================
-function updateDashboard() {
-    // If channel is public, you could also omit api_key completely.
-    const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${readAPIKey}&results=40`;
-
-    fetch(url)
-        .then(r => r.json())
-        .then(d => {
-            console.log("ThingSpeak response:", d);
-
-            let feeds = d.feeds;
-            if (!feeds || feeds.length === 0) {
-                console.warn("No feeds returned from ThingSpeak");
-                return;
-            }
-
-            let latest = feeds[feeds.length - 1];
-
-            let pm25 = latest.field1 ? parseFloat(latest.field1) : 0;
-            let pm10 = latest.field2 ? parseFloat(latest.field2) : 0;
-            let temp = latest.field3 ? parseFloat(latest.field3) : 0;
-
-            let aqi = calculateAQI(pm25, pm10);
-
-            // Update live values
-            document.getElementById("pm25").innerText = pm25.toFixed(1);
-            document.getElementById("pm10").innerText = pm10.toFixed(1);
-            document.getElementById("temp").innerText = temp.toFixed(1);
-            document.getElementById("aqiIndicator").innerText = aqi;
-
-            document.getElementById("aqiIndicator").style.backgroundColor =
-                (aqi <= 50)  ? "#00ff00" :
-                (aqi <= 100) ? "#ffff00" :
-                (aqi <= 150) ? "#ff9900" : "#ff0000";
-
-            // Update gauges
-            gaugePM25.refresh(pm25);
-            gaugePM10.refresh(pm10);
-            gaugeTemp.refresh(temp);
-            gaugeAQI.refresh(aqi);
-
-            // Update charts
-            let times    = feeds.map(f => f.created_at.split("T")[1].slice(0, 5));
-            let pm25Data = feeds.map(f => f.field1 ? parseFloat(f.field1) : 0);
-            let pm10Data = feeds.map(f => f.field2 ? parseFloat(f.field2) : 0);
-            let tempData = feeds.map(f => f.field3 ? parseFloat(f.field3) : 0);
-
-            chartPM25.data.labels = times;
-            chartPM25.data.datasets[0].data = pm25Data;
-            chartPM25.update();
-
-            chartPM10.data.labels = times;
-            chartPM10.data.datasets[0].data = pm10Data;
-            chartPM10.update();
-
-            chartTemp.data.labels = times;
-            chartTemp.data.datasets[0].data = tempData;
-            chartTemp.update();
-        })
-        .catch(e => console.error("Error fetching ThingSpeak data:", e));
-}
-
+// Initial update + refresh every 20 seconds
 updateDashboard();
-setInterval(updateDashboard, 20000);
+setInterval(updateDashboard,20000);
 
-// ==================== QR CODE ====================
-document.getElementById("qrButton").addEventListener("click", () => {
-    let url = window.location.href;
-    QRCode.toCanvas(document.getElementById("qrcode"), url, { width: 150 });
-});
+// ================= QR CODE =================
+document.getElementById("qrButton").onclick=()=>{
+    QRCode.toCanvas(document.getElementById("qrcode"),window.location.href,{width:150});
+};
 </script>
 
 </body>
